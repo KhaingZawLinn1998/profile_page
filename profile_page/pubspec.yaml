@@ -17,7 +17,9 @@ dependencies:
   page_transition: ^2.0.9
   loading_animation_widget: ^1.2.0+4
   cached_network_image: ^3.2.3
-  image: ^4.2.0 
+  image: ^4.2.0
+  intl_phone_field: ^3.2.0
+  intl: ^0.19.0
 
 dev_dependencies:
   flutter_test:
