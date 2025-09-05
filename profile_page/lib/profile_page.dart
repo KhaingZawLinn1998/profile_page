@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:developer';
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -21,14 +20,15 @@ class ProfilePage extends StatefulWidget {
       {super.key,
       UserData? userData,
       Config? config,
-      required this.callbackImgData,
-      required this.callbackUserData})
+      required this.buttonTxt,
+      required this.buttonCallBack})
       : userData = userData ?? const UserData(),
         config = config ?? const Config();
+
   final UserData userData;
   final Config config;
-  final Function(ImgData) callbackImgData;
-  final Function(CallbackUserData) callbackUserData;
+  final String buttonTxt;
+  final Function(ButtonCallBack) buttonCallBack;
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -170,11 +170,8 @@ class _ProfilePageState extends State<ProfilePage> {
             img.decodeImage(File(_profileImagePath.value).readAsBytesSync())!;
         imagebytes = Uint8List.fromList(img.encodePng(imageBytes));
         imagebase64string = base64.encode(imagebytes);
-        log('base64>> $imagebase64string');
-        imagePath = base64.encode(imagebytes);
+        imagePath = croppedFile.path;
         imageName = _pickedFile!.name;
-        widget.callbackImgData(ImgData(
-            base64: imagebase64string, imgName: imageName, imgPath: imagePath));
       }
     }
   }
@@ -229,7 +226,6 @@ class _ProfilePageState extends State<ProfilePage> {
             '${selected.day.toString()} ${DateFormat('MMM').format(selected)} ${selected.year.toString()}';
         userData =
             userData!.copyWith(dob: DateFormat('yyyy-MM-dd').format(selected));
-        widget.callbackUserData(userData!);
       } else {
         throw Exception("invalid_selected_date");
       }
@@ -259,233 +255,291 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     return Container(
       alignment: Alignment.topCenter,
-      margin: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      margin: EdgeInsets.symmetric(horizontal: 6),
       child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Column(
-            children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  GestureDetector(
-                    onTap: () {
-                      if (imagePath.isNotEmpty) {
-                        Navigator.push(
-                          context,
-                          PageTransition(
-                            type: PageTransitionType.rightToLeft,
-                            duration: Duration(milliseconds: 280),
-                            reverseDuration: Duration(milliseconds: 280),
-                            curve: Curves.easeInOut,
-                            child:
-                                FullViewImage(imagePath, isBase64(imagePath)),
-                          ),
-                        );
-                      }
-                    },
-                    child: Container(
-                        width: MediaQuery.of(context).size.width * 0.3,
-                        height: MediaQuery.of(context).size.height * 0.13,
+        child: Column(
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                GestureDetector(
+                  onTap: () {
+                    if (imagePath.isNotEmpty) {
+                      Navigator.push(
+                        context,
+                        PageTransition(
+                          type: PageTransitionType.rightToLeft,
+                          duration: Duration(milliseconds: 280),
+                          reverseDuration: Duration(milliseconds: 280),
+                          curve: Curves.easeInOut,
+                          child: FullViewImage(imagePath, isBase64(imagePath)),
+                        ),
+                      );
+                    }
+                  },
+                  child: Container(
+                      width: MediaQuery.of(context).size.width * 0.3,
+                      height: MediaQuery.of(context).size.height * 0.13,
+                      clipBehavior: Clip.hardEdge,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        shape: BoxShape.circle,
+                      ),
+                      child: ValueListenableBuilder(
+                        valueListenable: _profileImagePath,
+                        builder: (context, value, child) {
+                          return value.isEmpty &&
+                                  widget.userData.base64.isNotEmpty
+                              ? Image.memory(
+                                  base64Decode(widget.userData.base64),
+                                  fit: BoxFit.cover,
+                                )
+                              : value.isNotEmpty
+                                  ? Image.file(
+                                      File(value),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : Icon(Icons.person, size: 50);
+                        },
+                      )),
+                ),
+                Positioned(
+                    bottom: -5,
+                    right: -5,
+                    child: GestureDetector(
+                      onTap: () {
+                        _fetchProfileImage();
+                      },
+                      child: Container(
+                        width: 40,
+                        height: 40,
                         clipBehavior: Clip.hardEdge,
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade200,
                           shape: BoxShape.circle,
+                          color: Theme.of(context).primaryColor,
                         ),
-                        child: ValueListenableBuilder(
-                          valueListenable: _profileImagePath,
-                          builder: (context, value, child) {
-                            return value.isEmpty &&
-                                    widget.userData.base64.isNotEmpty
-                                ? Image.memory(
-                                    base64Decode(widget.userData.base64),
-                                    fit: BoxFit.cover,
-                                  )
-                                : value.isNotEmpty
-                                    ? Image.file(
-                                        File(value),
-                                        fit: BoxFit.cover,
-                                      )
-                                    : Icon(Icons.person, size: 50);
-                          },
-                        )),
-                  ),
-                  Positioned(
-                      bottom: -5,
-                      right: -5,
-                      child: GestureDetector(
-                        onTap: () {
-                          _fetchProfileImage();
-                        },
-                        child: Container(
-                          width: 40,
-                          height: 40,
-                          clipBehavior: Clip.hardEdge,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Theme.of(context).primaryColor,
-                          ),
-                          child: Icon(
-                            Icons.image_outlined,
-                            color: Theme.of(context).scaffoldBackgroundColor,
-                          ),
+                        child: Icon(
+                          Icons.image_outlined,
+                          color: Theme.of(context).scaffoldBackgroundColor,
                         ),
-                      )),
-                ],
-              ),
-              SizedBox(height: 24),
-              BuildTextFormField(
-                  label: "Name",
-                  controller: nameCtrl,
-                  change: (nameVal) {
-                    userData = CallbackUserData(name: nameVal ?? "");
-                    widget.callbackUserData(userData!);
-                  }),
-              AbsorbPointer(
-                absorbing: widget.config.readOnlyPhoneNo,
+                      ),
+                    )),
+              ],
+            ),
+            SizedBox(height: 26),
+            Card(
                 child: Padding(
-                  padding: const EdgeInsets.only(top: 18),
-                  child: SizedBox(
-                    height: MediaQuery.of(context).size.height * 0.059,
-                    child: InputDecorator(
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: Colors.grey.shade200,
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8.0),
-                            borderSide:
-                                BorderSide(color: Theme.of(context).focusColor),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8.0),
-                            borderSide:
-                                BorderSide(color: Theme.of(context).focusColor),
-                          ),
-                          contentPadding: EdgeInsets.only(left: 12),
-                          labelText: "phone",
-                          labelStyle: Theme.of(context).textTheme.bodyMedium,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10.0),
-                          ),
-                        ),
-                        child: IntlPhoneField(
-                          autovalidateMode: AutovalidateMode.onUserInteraction,
-                          disableLengthCheck: true,
-                          initialCountryCode: "MM",
-                          dropdownTextStyle:
-                              Theme.of(context).textTheme.bodyMedium,
-                          style: TextStyle(fontSize: 16),
-                          dropdownIcon: const Icon(
-                            Icons.keyboard_arrow_down_sharp,
-                            color: Colors.grey,
-                          ),
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(RegExp('[0-9]+')),
-                            LengthLimitingTextInputFormatter(13),
-                          ],
-                          dropdownIconPosition: IconPosition.trailing,
+              padding: const EdgeInsets.fromLTRB(8, 0, 8, 18),
+              child: Column(children: [
+                BuildTextFormField(
+                    label: "Name",
+                    controller: nameCtrl,
+                    change: (nameVal) {
+                      userData = CallbackUserData(name: nameVal ?? "");
+                    }),
+                AbsorbPointer(
+                  absorbing: widget.config.readOnlyPhoneNo,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 18),
+                    child: SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.059,
+                      child: InputDecorator(
                           decoration: InputDecoration(
-                            hintText: "9XXXXXXXXX",
-                            hintStyle: TextStyle(fontSize: 14),
+                            filled: true,
+                            fillColor: Colors.grey.shade200,
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8.0),
-                              borderSide: BorderSide(color: Colors.transparent),
+                              borderSide: BorderSide(
+                                  color: Theme.of(context).focusColor),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8.0),
-                              borderSide: BorderSide(color: Colors.transparent),
+                              borderSide: BorderSide(
+                                  color: Theme.of(context).focusColor),
                             ),
-                            contentPadding: EdgeInsets.zero,
+                            contentPadding: EdgeInsets.only(left: 12),
+                            labelText: "phone",
+                            labelStyle: Theme.of(context).textTheme.bodyMedium,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10.0),
+                            ),
                           ),
-                          controller: phoneCtrl,
-                          onChanged: (phone) {
-                            phoneNo = phone.number;
-                            // if (countryCode == "95") {
-                            //   widget.phone(phoneNo.getPhoneFormat());
-                            // }
-                            userData = userData!
-                                .copyWith(phone: '+$countryCode$phoneNo');
-                            widget.callbackUserData(userData!);
-                          },
-                          onCountryChanged: (country) {
-                            countryCode = country.dialCode;
-                            userData = userData!
-                                .copyWith(phone: '+$countryCode$phoneNo');
-                            widget.callbackUserData(userData!);
+                          child: IntlPhoneField(
+                            autovalidateMode:
+                                AutovalidateMode.onUserInteraction,
+                            disableLengthCheck: true,
+                            initialCountryCode: "MM",
+                            style: TextStyle(fontSize: 16),
+                            dropdownIcon: const Icon(
+                              Icons.keyboard_arrow_down_sharp,
+                              color: Colors.grey,
+                            ),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(
+                                  RegExp('[0-9]+')),
+                              LengthLimitingTextInputFormatter(13),
+                            ],
+                            dropdownIconPosition: IconPosition.trailing,
+                            decoration: InputDecoration(
+                              hintText: "9XXXXXXXXX",
+                              hintStyle: TextStyle(fontSize: 14),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8.0),
+                                borderSide:
+                                    BorderSide(color: Colors.transparent),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8.0),
+                                borderSide:
+                                    BorderSide(color: Colors.transparent),
+                              ),
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                            controller: phoneCtrl,
+                            onChanged: (phone) {
+                              phoneNo = phone.number;
+                              if (countryCode == "95") {
+                                userData = userData!.copyWith(phone: phoneNo);
+                              } else {
+                                userData = userData!
+                                    .copyWith(phone: '+$countryCode$phoneNo');
+                              }
+                            },
+                            onCountryChanged: (country) {
+                              countryCode = country.dialCode;
+                              if (countryCode == "95") {
+                                userData = userData!.copyWith(phone: phoneNo);
+                              } else {
+                                userData = userData!
+                                    .copyWith(phone: '+$countryCode$phoneNo');
+                              }
+                            },
+                          )),
+                    ),
+                  ),
+                ),
+                BuildTextFormField(
+                  label: "Email",
+                  controller: emailCtrl,
+                  change: (emailVal) {
+                    userData = userData!.copyWith(email: emailVal);
+                  },
+                ),
+                AbsorbPointer(
+                  absorbing: widget.config.readOnlyGender,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 18),
+                    child: SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.059,
+                        child: ValueListenableBuilder(
+                          valueListenable: _genderValue,
+                          builder: (context, value, child) {
+                            return DropdownButtonFormField(
+                                decoration: InputDecoration(
+                                    filled: true,
+                                    fillColor: Colors.grey.shade200,
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8.0),
+                                      borderSide: BorderSide(
+                                        color: Theme.of(context).focusColor,
+                                      ),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8.0),
+                                      borderSide: BorderSide(
+                                        color: Theme.of(context).focusColor,
+                                      ),
+                                    ),
+                                    labelText: "Gender",
+                                    contentPadding:
+                                        EdgeInsets.symmetric(horizontal: 12)),
+                                value: _genderValue.value,
+                                onChanged: (String? newValue) {
+                                  _genderValue.value = newValue!;
+                                  userData =
+                                      userData!.copyWith(gender: newValue);
+                                },
+                                items: genderItem);
                           },
                         )),
                   ),
                 ),
-              ),
-              BuildTextFormField(
-                label: "Email",
-                controller: emailCtrl,
-                change: (emailVal) {
-                  userData = userData!.copyWith(email: emailVal);
-                  widget.callbackUserData(userData!);
-                },
-              ),
-              AbsorbPointer(
-                absorbing: widget.config.readOnlyGender,
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 18),
-                  child: SizedBox(
-                      height: MediaQuery.of(context).size.height * 0.059,
-                      child: ValueListenableBuilder(
-                        valueListenable: _genderValue,
-                        builder: (context, value, child) {
-                          return DropdownButtonFormField(
-                              decoration: InputDecoration(
-                                  filled: true,
-                                  fillColor: Colors.grey.shade200,
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8.0),
-                                    borderSide: BorderSide(
-                                      color: Theme.of(context).focusColor,
-                                    ),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8.0),
-                                    borderSide: BorderSide(
-                                      color: Theme.of(context).focusColor,
-                                    ),
-                                  ),
-                                  labelText: "Gender",
-                                  labelStyle:
-                                      Theme.of(context).textTheme.bodyMedium,
-                                  contentPadding:
-                                      EdgeInsets.symmetric(horizontal: 12)),
-                              style: Theme.of(context).textTheme.bodyMedium,
-                              value: _genderValue.value,
-                              onChanged: (String? newValue) {
-                                _genderValue.value = newValue!;
-                                userData = userData!.copyWith(gender: newValue);
-                                widget.callbackUserData(userData!);
-                              },
-                              items: genderItem);
-                        },
-                      )),
+                InkWell(
+                  onTap: () => _selectDate(context),
+                  child: AbsorbPointer(
+                    absorbing: widget.config.readOnlyDob,
+                    child: BuildTextFormField(
+                        label: "Date Of Birth",
+                        controller: dobCtrl,
+                        readOnly: widget.config.readOnlyDob),
+                  ),
                 ),
-              ),
-              InkWell(
-                onTap: () => _selectDate(context),
-                child: BuildTextFormField(
-                    label: "Date Of Birth",
-                    controller: dobCtrl,
-                    readOnly: widget.config.readOnlyDob),
-              ),
-              BuildTextFormField(
-                  label: "Address",
-                  controller: addressCtrl,
-                  change: (addressVal) {
-                    userData = userData!.copyWith(address: addressVal);
-                    widget.callbackUserData(userData!);
-                  }),
-            ],
-          ),
+                BuildTextFormField(
+                    label: "Address",
+                    controller: addressCtrl,
+                    change: (addressVal) {
+                      userData = userData!.copyWith(address: addressVal);
+                    }),
+              ]),
+            )),
+            BuildButton(
+                txt: widget.buttonTxt,
+                onTap: () {
+                  FocusScopeNode currentScope = FocusScope.of(context);
+                  if (!currentScope.hasPrimaryFocus && currentScope.hasFocus) {
+                    FocusManager.instance.primaryFocus?.unfocus();
+                  }
+                  if (countryCode == "95") {
+                    userData = userData!
+                        .copyWith(phone: userData!.phone.getPhoneFormat());
+                  } else {
+                    userData = userData!.copyWith(phone: userData!.phone);
+                  }
+                  widget.buttonCallBack(ButtonCallBack(
+                      imgData: ImgData(
+                          base64: imagebase64string.isEmpty
+                              ? widget.userData.base64
+                              : imagebase64string,
+                          imgName: imageName,
+                          imgPath: imagePath),
+                      callbackUserData: userData!));
+                })
+          ],
         ),
       ),
     );
+  }
+}
+
+extension PhoneFormat on String {
+  String getPhoneFormat() {
+    if (length >= 8 && length <= 13) {
+      if (indexOf("+") == 0 && (length == 12 || length == 13 || length == 11)) {
+        return this;
+      } else if (indexOf("09") == 0 &&
+          (length == 10 || length == 11 || length == 9)) {
+        return '+959${substring(2)}';
+      } else if (indexOf("7") == 0 && length == 9) {
+        return '+959$this';
+      } else if (indexOf("9") == 0 && length == 9) {
+        return '+959${substring(1)}';
+      } else if (indexOf("9") == 0 &&
+          indexOf("959") != 0 &&
+          (length == 8 || length == 10)) {
+        return '+959${substring(1)}';
+      } else if (indexOf("7") != 0 &&
+          indexOf("9") != 0 &&
+          (length == 6 || length == 9 || length == 7)) {
+        return '+959$this';
+      } else if (indexOf("959") == 0 &&
+          (length == 11 || length == 12 || length == 10)) {
+        return '+959${substring(3)}';
+      } else {
+        return "";
+      }
+    } else {
+      return "";
+    }
   }
 }
 

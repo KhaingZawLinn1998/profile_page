@@ -1,3 +1,5 @@
+import 'package:profile_page/model/img.dart';
+
 class UserData {
   final String base64;
   final String name;
@@ -26,15 +28,13 @@ class CallbackUserData {
   final String address;
 
   CallbackUserData(
-      {
-      String? name,
+      {String? name,
       String? phone,
       String? email,
       String? gender,
       String? dob,
       String? address})
-      : 
-        name = name ?? '',
+      : name = name ?? '',
         phone = phone ?? '',
         email = email ?? '',
         gender = gender ?? '',
@@ -42,8 +42,7 @@ class CallbackUserData {
         address = address ?? '';
 
   CallbackUserData copyWith(
-      {
-      String? name,
+      {String? name,
       String? phone,
       String? email,
       String? gender,
@@ -57,6 +56,13 @@ class CallbackUserData {
         dob: dob ?? this.dob,
         address: address ?? this.address);
   }
+}
+
+class ButtonCallBack {
+  ImgData imgData;
+  CallbackUserData callbackUserData;
+
+  ButtonCallBack({required this.imgData, required this.callbackUserData});
 }
 
 class Countries {

@@ -49,3 +49,39 @@ class BuildTextFormField extends StatelessWidget {
     );
   }
 }
+
+class BuildButton extends StatelessWidget {
+  const BuildButton({super.key, required this.txt, required this.onTap});
+  final String txt;
+  final Function onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: 40, horizontal: 14),
+      width: MediaQuery.of(context).size.width,
+      height: MediaQuery.of(context).size.height * 0.06,
+      child: TextButton(
+        onPressed: () => onTap(),
+        style: TextButton.styleFrom(
+            padding: EdgeInsets.zero,
+            minimumSize: Size(50, 30),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            alignment: Alignment.center,
+            foregroundColor: Colors.white,
+            backgroundColor: Theme.of(context).primaryColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8.0),
+            )),
+        child: Text(
+          txt,
+          style: TextStyle(
+            fontSize: 15,
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+}
